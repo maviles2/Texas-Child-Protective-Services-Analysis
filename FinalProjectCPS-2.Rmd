@@ -1,0 +1,303 @@
+---
+title: "Final Project - CPS"
+author: "Marlene Aviles"
+date: "11/14/2019"
+output:
+  pdf_document: default
+  word_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Final Project Part 2 
+### CPS 7.1 Removals - by Region with Child Demographics FY08- FY18
+
+The following project will focus on analyzing the data from the Texas Department of Family and Protective Services (DFPS); this data is concerning statistics on children who are in foster care, have been removed, and are currently waiting to be adopted. I am interested in identifying the differences between two different regions, in the state of Texas, affecting the number of children removed. This analyzation will specifically focus on comparing the removal data from Austin, TX, and El Paso, TX. Austin, Texas, is the capital of the state, and El Paso, Texas, was ranked as one of the safest cities in the country hence the reason for the selection of these two cities. The analyzation will look at factors such as age and gender, affecting the number of removals in these two cities. Being able to identify if there are differences between these geographical regions within the state, will allow for a better understanding of these communities and better policymaking. This analyzation can overall be useful for the state of Texas, DFPS employees, and the population residing in these geographical areas of Texas.
+
+### Data Source
+https://data.texas.gov/Social-Services/CPS-7-1-Removals-by-Region-with-Child-Demographics/izsm-24wy 
+
+### Questions: 
+
+*1. Data importing, and cleaning steps are explained in the text and in the Data Camp exercises (tell me why you are doing the data cleaning activities that you perform) and follow a logical process.*
+
+*2. With a clean dataset, show what the final data set looks like. However, do not print off a data frame with 200+ rows; show me the data in the most condensed form possible.*
+
+*3. What do you not know how to do right now that you need to learn to import and cleanup your dataset? I am not sure if to leave the regions as part of my project or to focus solely on the cities of Austin and El Paso. I will also need to review how to adjust my x and y axis on my graphs.*
+
+*4. Discuss how you plan to uncover new information in the data that is not self-evident. Finding new information in the data will be accomplished by splitting the data into 2 new data frames. This will allow for different year and region comparisons; fiscal years 2008 and 2018. The data frames will also be merged and analyzed together to see if any significant information can be found.*
+
+*5.What are different ways you could look at this data to answer the questions you want to answer? The data will use summary statistics such as the mean, median, and mode. Regression analysis will also be applied to this project to see if any causations or correlations can be found within the variables.*
+
+*6. Do you plan to slice and dice the data in different ways, create new variables, or join separate data frames to create new summary information? Explain. Yes, the data contains information for 10 years so only the years 2008 and 2018 will be analyzed to compare the removals in the last ten years. The data will also be split by city, age, and gender.*
+
+*7. How could you summarize your data to answer key questions? My data can be split into different fiscal years and into two different subgroups in order to compare the removals between both cities.*
+
+*8. What types of plots and tables will help you to illustrate the findings to your questions? Ensure that all graph plots have axis titles, a legend if necessary, scales are appropriate, appropriate geoms used, etc.). This following project will use histograms, scatterplots, and generalized linear models (GLM), as a way to visualize the data before working with it.* 
+
+*9. What do you not know how to do right now that you need to learn to answer your questions? I need to learn how to fix my graphs according to the variables that I am plotting so all of the information is visible.*
+
+*10.Do you plan on incorporating any machine learning techniques to answer your research questions? Explain. One of the methods of machine learning is known as supervised learning, which in this case, will be used to create a regression algorithm to perform linear or logistic regression analysis. This analysis will allow me to predict the number of removals and how they vary based on the other explanatory variables in my data.*
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(data.table)
+library(tidyr)
+library(tidyverse)
+library(ggplot2)
+library(Rcmdr)
+library(GGally)
+library(Hmisc)
+library(ggm)
+library(QuantPsyc)
+library(utils)
+```
+### 1. Importing and Cleaning Data 
+*Dataset includes 30,214 observations of 7 variables. Raw data is loaded as a dataframe with 7 columns.* 
+```{r}
+library(dplyr)
+Removals <- read.csv("~/Desktop/School/Final Project DSC 520 CPS /CPS_7.1_Removals_-_by_Region_with_Child_Demographics_FY08-_FY18.csv", stringsAsFactors = FALSE)
+
+removals.df <- data.frame(Removals)
+
+# removing the Removal.Stage and Race.Ethnicity columns 
+drops <- c("Removal.Stage","Race.Ethnicity")
+final.df <- removals.df[ , !(names(removals.df) %in% drops)]
+
+# convert gender as factor 3 level
+final.df['Gender'] <- as.factor(final.df$Gender)
+str(final.df)
+
+```
+*Regiony08_18: Datafram for Austin and El Paso (Y08/18)*
+*Results: n = 848, Austin .69/1 proportion of data, gender balanced ration between M and F, average age of removal is 8 yrs, total sum of removals = 5,618.* 
+```{r, echo=F}
+library(data.table)
+# Creating new dataframes for Austin and El Paso (2008 and 2018)
+
+regiony08_18 <- filter(final.df, Fiscal.Year %in% c(2008, 2018), Region %in% c("7-Austin", "10-El Paso"), Removals <= 100)
+number_removals1 = summarise(regiony08_18, number_removals1 = sum(Removals))
+
+number_removals1 # total number removals 08-18 EP/AUS
+
+number_pass_class1 = regiony08_18 %>% 
+  group_by(Age) %>%
+summarise(number_removals1 = sum(Removals))
+number_pass_class1
+plot(number_pass_class1, main = "Removals by Age 2008 & 2018",ylab = "Removals")
+
+str(regiony08_18)
+summary(regiony08_18)
+describe(regiony08_18)
+sum(regiony08_18$Removals)
+```
+*Years08: Datafram for Austin and El Paso (Y08)*
+*Results: n = 390, Austin .68/1 proportion of data, gender balanced ration between M and F, average age of removal is 8 yrs, total sum of removals = 1,986.* 
+```{r, echo=FALSE}
+library(dplyr)
+
+years08 <- filter(final.df, Fiscal.Year %in% c(2008), Region %in% c("7-Austin", "10-El Paso"), Removals <= 100)
+
+number_removals = summarise(years08, number_removals = sum(years08$Removals))
+
+number_removals # total number removals 08 EP/AUS
+  
+number_pass_class = years08 %>% 
+  group_by(Age) %>%
+summarise(number_removals = sum(Removals))
+number_pass_class
+plot(number_pass_class, main = "Removals by Age 2008",ylab = "Removals")
+
+str(years08)
+describe(years08)
+sum(years08$Removals)
+```
+*Years18: Datafram for Austin and El Paso (Y18)*
+*Results: n = 458, Austin .70/1 proportion of data, gender balanced ration between M and F, average age of removal is 8 yrs, total sum of removals = 3,632.* 
+```{r, echo=FALSE}
+library(dplyr)
+
+years18 <- filter(final.df, Fiscal.Year %in% c(2018), Region %in% c("7-Austin", "10-El Paso"), Removals <= 100)
+
+number_removals2 = summarise(years18, number_removals2 = sum(Removals))
+
+number_removals2 # total number removals 18 EP/AUS
+
+number_pass_class2 = years18 %>% 
+  group_by(Age) %>%
+summarise(number_removals2 = sum(Removals))
+number_pass_class2
+plot(number_pass_class2, main = "Removals by Age 2018",ylab = "Removals")
+
+str(years18)
+describe(years18)
+sum(years18$Removals)
+```
+
+
+### 2. Cleaned Dataset
+
+*The final condensed dataset (regiony08_18) is made up of 848 observations of  5 variables and it contains data from fiscal years 2008 and 2018.A dataset to reflect the fiscal year 2008 is named years08, while dataset reflecting fiscal year 2018 is named as years18. The outliers in the datasets are treated by filtering removals to 100 removals or less, as most this is where most of the removal data lays. There are no missing values in the dataset. The variable gender will be treated as a factor.*
+
+```{r}
+#library(dplyr)
+#newregion <-arrange(regiony08_18, desc(regiony08_18$Removals), desc(regiony08_18$Age))
+#head(newregion)
+head(regiony08_18)
+```
+
+### Exploratory Data Analysis
+
+#### Plots 
+```{r, echo=FALSE}
+#Density Plots
+library(ggplot2)
+library(ggridges)
+ 
+
+ggplot(regiony08_18, aes(x = Removals, y=number_removals1$number_removals, fill=Removals)) +
+  geom_density_ridges(alpha=0.6) +
+  theme_ridges() + 
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) + 
+  labs(title ='Total Number of Removals in Austin & El Paso (2008 & 2018) ',x="Region", y = "Removals 
+       (Thousands)") 
+
+ggplot(years08, aes(x = Removals , y=number_removals$number_removals, fill=Removals)) +
+  geom_density_ridges(alpha=0.6) +
+  theme_ridges() + 
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())  + 
+  labs(title ='Total Number of Removals in Austin & El Paso (2008) ',x="Region", y = "Removals 
+       (Thousands)") 
+
+ggplot(years18, aes(x = Removals , y=number_removals2$number_removals, fill=Removals)) +
+  geom_density_ridges(alpha=0.6) +
+  theme_ridges() + 
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())  + 
+  labs(title ='Total Number of Removals in Austin & El Paso (2018) ',x="Region", y = "Removals 
+       (Thousands)") 
+```
+
+```{r, echo=FALSE}
+# Merged 
+hist(regiony08_18$Removals, main = "Histogram of Removals in Austin & El Paso 2008 & 2018", xlab = "Removals")
+
+
+scatter <- ggplot(regiony08_18, aes(x=regiony08_18$Region, y=regiony08_18$Removals)) + geom_point() + labs(title ='Removals by Region (2008 & 2018) ',x="Region", y = "Removals") + theme(
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) 
+
+
+scatter + geom_point(aes(color=Region))
+scatter + geom_point(aes(color=Region)) + facet_wrap(~Fiscal.Year) 
+```
+```{r, warning=FALSE, echo=FALSE}
+
+c1 <- regiony08_18 %>%
+  ggplot(aes(x = Age, y = Removals)) +
+  geom_point() + ggtitle("Removals vs Age 2008 & 2018") + facet_wrap(~ Fiscal.Year) + scale_x_continuous(breaks = seq(from=0, to =17, by=1)) + theme(
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) 
+c1
+
+c3 <- regiony08_18 %>%
+  ggplot(aes(x = Region, y = Removals, col = factor(Gender))) +
+  geom_point() + ggtitle("Removals vs Region by Gender 2008 & 2018") + facet_wrap(~Gender) 
+c3
+
+
+GGally::ggpairs(regiony08_18, binwidth = .3) + ggtitle("Variables in 2008 & 2018 Data")
+GGally::ggpairs(years08, binwidth = 0.3) + ggtitle("Variables in 2008 Data")
+GGally::ggpairs(years18, binwidth = 0.3) + ggtitle("Variables in 2018 Data")
+
+# The results show the there are no strong correlations present in any of the three datasets.
+
+```
+```{r, warning=FALSE,echo=FALSE}
+dd <- years08 %>%
+  ggplot(aes(x = Region, y = Removals, col = factor(Gender))) +
+  geom_point() + ggtitle("Removals vs Region by Gender 2008") + facet_wrap(~Gender) 
+dd
+
+f3 <- years18 %>%
+  ggplot(aes(x = Region, y = Removals, col = factor(Gender))) +
+  geom_point() + ggtitle("Removals vs Region by Gender 2018") + facet_wrap(~Gender) 
+f3
+```
+
+### Splitting Data  
+```{r, warning=FALSE, echo=FALSE}
+library(pastecs)
+library(ggplot2)
+male_data1 <- subset(regiony08_18, Gender == "Male")
+head(male_data1)
+female_data1 <- subset(regiony08_18, Gender == "Female")
+head(female_data1)
+
+# selecting continuous variables for further analysis
+male_data2 <- male_data1[, c(1,4,5)] 
+head(male_data2)
+
+female_data2 <- female_data1[, c(1,4,5)]  
+head(female_data2)
+
+# Male Data
+round(stat.desc(male_data2, basic = FALSE, norm = TRUE), digits= 3)
+cor(male_data2,method = "spearman")
+
+# Female Data 
+round(stat.desc(female_data2, basic = FALSE, norm = TRUE), digits= 3)
+cor(female_data2,method = "spearman")
+```
+### Correlation & Coveriance 
+
+```{r, warning=FALSE, echo=FALSE}
+# Veryfing correlation 
+
+# Removals, Age 
+cor(regiony08_18$Removals,regiony08_18$Age) # -0.276592 weak neg
+cov(regiony08_18$Removals,regiony08_18$Age) # -14.35124
+
+# Removals, Gender
+cor(regiony08_18$Removals,as.numeric(regiony08_18$Gender)) # -0.008300668 weak neg
+cov(regiony08_18$Removals,as.numeric(regiony08_18$Gender)) # -0.04265053
+
+# Removals, Fiscal.Year (slight increase seen in 2018 graphs)
+cor(regiony08_18$Removals,as.numeric(regiony08_18$Fiscal.Year)) # 0.1415756 weak pos
+cov(regiony08_18$Removals,as.numeric(regiony08_18$Fiscal.Year)) # 7.057261
+```
+
+### Regression Analysis 
+```{r number_pass_class1, warning=FALSE, echo=FALSE}
+
+# Logistic Regression w/ Gender + Age 
+modela<- glm(formula = Removals ~ Gender + Age, data = regiony08_18)
+
+summary(modela)
+
+```
+
+*Sources Cited:*
+
+*Children in Foster Care. (2019). Retrieved from https://datacenter.kidscount.org/data/tables/6243-children-in-foster-care#detailed/1/any/false/871,870,573,869,36,868,867,133,38,35/any/12987*
+
+*Edwards., R. (2019). The 10 Safest and Most Dangerous Metro Cities in America for 2019. Retrieved from https://www.safewise.com/blog/safest-metro-cities/*
+
+*Texas Cities by Population. (2019). Retrieved from https://www.texas-demographics.com/cities_by_population*
+
+*Texas Department of Family and Protective Services. (2019). CPS 7.1 Removals - by Region with Child Demographics FY08- FY18 [Data file]. Retrieved from https://data.texas.gov/Social-Services/CPS-7-1-Removals-by-Region-with-Child-Demographics/izsm-24wy*
+*Texas Department of Family and Protective Services. (2019). CPS 8.1 Foster Care Placements By Fiscal Year And Region - FY08-FY18 [Data file]. Retrieved from https://data.texas.gov/Social-Services/CPS-8-1-Foster-Care-Placements-By-Fiscal-Year-And-/2uph-z7nn*
+*Texas Department of Family and Protective Services. (2019). CPS 9.1 Adoption - Children Waiting For Adoption on August 31 and Average Months Since TMC by Region FY08-FY18 [Data file]. Retrieved from https://data.texas.gov/Social-Services/CPS-9-1-Adoption-Children-Waiting-For-Adoption-on-/uatm-kqp7*
+*Texas Department of Family and Protective Services. (201). Data Card [Pdf]. Retrieved from https://www.dfps.state.tx.us/About_DFPS/Data_Book/documents/DFPS_Data_Card_FY_2018.pdf*
+
+
